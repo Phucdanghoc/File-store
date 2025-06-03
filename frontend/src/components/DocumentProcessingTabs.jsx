@@ -37,9 +37,9 @@ const DocumentProcessingTabs = ({
       const file = files[0];
       const formData = new FormData();
       formData.append('file', file);
-      
+
       const response = await api.uploadDocument(formData);
-      
+
       if (response.data && response.data.id) {
         setUploadedFile({
           id: response.data.id,
@@ -57,22 +57,47 @@ const DocumentProcessingTabs = ({
       showError(`Lỗi: ${error.message || 'Không xác định'}`, 'Lỗi xử lý');
     }
   };
-  
+
   const handleProcessFile = async (operation) => {
     if (!uploadedFile) return;
-    
+
     setSelectedOperation(operation);
-    
+
     try {
       let response;
-      
+      let convert = false;
+
       switch (operation) {
         case 'to-pdf':
           if (documentType === 'word') {
-            response = await api.convertToPdf(uploadedFile.id);
+            try {
+              const response = await api.downloadDocument(uploadedFile.id);
+              const file = new File([response.data], `document_${uploadedFile.id}.docx`, {
+                type: response.headers['content-type'] || 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+              });
+              const convertResponse = await api.convertFileToPdf(file);
+              console.log('Convert response:', convertResponse.data);
+
+              const downloadResponse = await api.downloadDocument(convertResponse.data.download_url.split('/').pop());
+              const blob = new Blob([downloadResponse.data], {
+                type: downloadResponse.headers['content-type'] || 'application/octet-stream'
+              });
+              const url = window.URL.createObjectURL(blob);
+              const link = document.createElement('a');
+              link.href = url;
+              link.download = convertResponse.data.filename;
+              document.body.appendChild(link);
+              link.click();
+              document.body.removeChild(link);
+              window.URL.revokeObjectURL(url);
+            } catch (error) {
+              console.error('Lỗi khi chuyển đổi tài liệu:', error);
+              showError(`Lỗi: ${error.message || 'Không xác định'}`, 'Lỗi xử lý');
+            }
           } else if (documentType === 'excel') {
             response = await api.convertToPdf(uploadedFile.id);
           }
+
           break;
         case 'to-word':
           if (documentType === 'pdf') {
@@ -84,31 +109,31 @@ const DocumentProcessingTabs = ({
         case 'watermark':
           const watermarkText = prompt('Nhập nội dung watermark:');
           if (!watermarkText) return;
-          
+
           const formData = new FormData();
           formData.append('document_id', uploadedFile.id);
           formData.append('watermark_text', watermarkText);
-          
+
           response = await api.addWatermark(formData);
           break;
       }
-      
-      if (response && response.data && response.data.task_id) {
-        setTaskId(response.data.task_id);
-      } else {
-        showError('Không nhận được task ID để theo dõi tiến trình', 'Lỗi xử lý');
-      }
+
+      // if (response && response.data && response.data.task_id) {
+      //   setTaskId(response.data.task_id);
+      // } else {
+      //   showError('Không nhận được task ID để theo dõi tiến trình', 'Lỗi xử lý');
+      // }
     } catch (error) {
       console.error('Lỗi khi xử lý file:', error);
       showError(`Lỗi: ${error.message || 'Không xác định'}`, 'Lỗi xử lý');
     }
   };
-  
+
   const resetProcess = () => {
     setTaskId(null);
     setSelectedOperation(null);
   };
-  
+
   const renderOperationButtons = () => {
     const operationLabels = {
       'to-pdf': 'Chuyển sang PDF',
@@ -121,10 +146,9 @@ const DocumentProcessingTabs = ({
       'compress': 'Nén tệp',
       'decompress': 'Giải nén tệp'
     };
-    
-    // Hiển thị các thao tác phù hợp với loại tài liệu
+
     const availableOperations = [];
-    
+
     if (documentType === 'pdf') {
       availableOperations.push('to-word', 'to-images', 'encrypt', 'decrypt', 'watermark', 'sign');
     } else if (documentType === 'word') {
@@ -134,7 +158,7 @@ const DocumentProcessingTabs = ({
     } else if (documentType === 'archives') {
       availableOperations.push('decompress');
     }
-    
+
     return (
       <div className="grid grid-cols-2 gap-2 mt-4">
         {availableOperations.map(op => (
@@ -153,7 +177,7 @@ const DocumentProcessingTabs = ({
   return (
     <div className="card bg-white">
       <h2 className="text-xl font-semibold mb-4">{getDocumentTypeTitle()}</h2>
-      
+
       {!uploadedFile ? (
         <FileUploader
           acceptedFileTypes={acceptedFileTypes}
@@ -167,9 +191,9 @@ const DocumentProcessingTabs = ({
             taskId={taskId}
             getTaskStatus={() => api.getTaskStatus(taskId)}
             downloadUrl={() => api.downloadProcessedDocument(taskId)}
-            onCompleted={() => {}}
+            onCompleted={() => { }}
           />
-          <button 
+          <button
             className="mt-4 btn btn-secondary w-full"
             onClick={resetProcess}
           >
@@ -188,18 +212,18 @@ const DocumentProcessingTabs = ({
                   : `${Math.round(uploadedFile.size / (1024 * 1024) * 10) / 10} MB`}
               </p>
             </div>
-            <button 
+            <button
               className="text-primary-600 hover:text-primary-700"
               onClick={async () => {
                 try {
                   const response = await api.downloadDocument(uploadedFile.id);
-                  
+
                   // Tạo blob URL từ response
-                  const blob = new Blob([response.data], { 
-                    type: response.headers['content-type'] || 'application/octet-stream' 
+                  const blob = new Blob([response.data], {
+                    type: response.headers['content-type'] || 'application/octet-stream'
                   });
                   const url = window.URL.createObjectURL(blob);
-                  
+
                   // Tạo link tạm thời để download
                   const link = document.createElement('a');
                   link.href = url;
@@ -217,13 +241,13 @@ const DocumentProcessingTabs = ({
               <FiDownload className="w-5 h-5" />
             </button>
           </div>
-          
+
           <div className="mt-4">
             <h3 className="text-md font-medium mb-2">Chọn thao tác xử lý:</h3>
             {renderOperationButtons()}
           </div>
-          
-          <button 
+
+          <button
             className="mt-4 btn btn-outline w-full"
             onClick={() => setUploadedFile(null)}
           >

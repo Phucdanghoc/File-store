@@ -175,6 +175,7 @@ const WordPage = () => {
             api={{
               uploadDocument: api.word.uploadDocument,
               downloadDocument: api.word.downloadDocument,
+              convertFileToPdf: api.word.convertFileToPdf,
               getTaskStatus: api.word.getTaskStatus,
               downloadProcessedDocument: api.word.downloadProcessedDocument,
               convertToPdf: api.word.convertToPdf,

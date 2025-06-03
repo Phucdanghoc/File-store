@@ -202,7 +202,7 @@ services:
 
   # RabbitMQ - hàng đợi tin nhắn
   rabbitmq:
-    image: rabbitmq
+    image: rabbitmq:3.12-management
     ports:
       - "5672:5672"
       - "15672:15672"
@@ -211,9 +211,11 @@ services:
       - RABBITMQ_DEFAULT_PASS=${RABBITMQ_PASS}
     volumes:
       - rabbitmq_data:/var/lib/rabbitmq
+      - ./rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf
     networks:
       - document-network
     restart: always
+
 
   # MinIO - Lưu trữ dạng S3
   minio:

@@ -38,7 +38,8 @@ class WordConverter:
         if output_path is None:
             output_dir = os.path.dirname(input_path)
             output_path = os.path.join(output_dir, f"{os.path.splitext(os.path.basename(input_path))[0]}.pdf")
-        
+            logger.info(f"Tạo tài liệu PDF: {output_path}")
+            output_path = output_path.replace("word", "pdf")
         try:
             cmd = [
                 'libreoffice', 
@@ -91,6 +92,7 @@ class WordConverter:
             if output_path is None:
                 output_dir = os.path.dirname(input_path)
                 output_path = os.path.join(output_dir, f"{os.path.splitext(os.path.basename(input_path))[0]}.pdf")
+            output_path = output_path.replace("word", "pdf")
             
             convert(input_path, output_path)
             return output_path
@@ -120,7 +122,7 @@ class WordConverter:
         if output_path is None:
             output_dir = os.path.dirname(input_path)
             output_path = os.path.join(output_dir, f"{os.path.splitext(os.path.basename(input_path))[0]}.pdf")
-        
+            output_path = output_path.replace("word", "pdf")
         try:
             request = ConvertRequest(
                 input_path=input_path,
@@ -168,6 +170,7 @@ class WordConverter:
                 request.input_path, 
                 request.output_path
             )
+            output_path = output_path.replace("word", "pdf")
             
             if os.path.exists(output_path):
                 return ConvertReply(success=True, message="Chuyển đổi thành công")
@@ -195,6 +198,7 @@ class WordConverter:
         if output_path is None:
             output_dir = os.path.dirname(input_path)
             output_path = os.path.join(output_dir, f"{os.path.splitext(os.path.basename(input_path))[0]}.pdf")
+        output_path = output_path.replace("word", "pdf")
         
         methods = {
             "libreoffice": WordConverter.convert_to_pdf_using_libreoffice,

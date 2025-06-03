@@ -53,7 +53,7 @@ let failedQueue = [];
 
 const processQueue = (error, token = null) => {
   failedQueue.forEach(prom => {
-    if(error) {
+    if (error) {
       prom.reject(error);
     } else {
       prom.resolve(token);
@@ -81,11 +81,11 @@ apiClient.interceptors.response.use(
   },
   async (error) => {
     const originalRequest = error.config;
-    
-        if (error.response?.status === 401 && !originalRequest._retry) {
-            if (isRefreshing) {
+
+    if (error.response?.status === 401 && !originalRequest._retry) {
+      if (isRefreshing) {
         return new Promise((resolve, reject) => {
-          failedQueue.push({resolve, reject});
+          failedQueue.push({ resolve, reject });
         }).then(token => {
           originalRequest.headers['Authorization'] = 'Bearer ' + token;
           return apiClient(originalRequest);
@@ -102,26 +102,26 @@ apiClient.interceptors.response.use(
         if (!refreshToken) {
           throw new Error('Không có refresh token');
         }
-        
-                const response = await apiClient.post('/auth/refresh-token', { 
-          refresh_token: refreshToken 
+
+        const response = await apiClient.post('/auth/refresh-token', {
+          refresh_token: refreshToken
         });
-        
+
         const { access_token, refresh_token } = response.data;
-        
-                localStorage.setItem('token', access_token);
+
+        localStorage.setItem('token', access_token);
         localStorage.setItem('refresh_token', refresh_token);
-        
-                apiClient.defaults.headers.common['Authorization'] = 'Bearer ' + access_token;
+
+        apiClient.defaults.headers.common['Authorization'] = 'Bearer ' + access_token;
         originalRequest.headers['Authorization'] = 'Bearer ' + access_token;
-        
-                processQueue(null, access_token);
-        
-                return apiClient(originalRequest);
+
+        processQueue(null, access_token);
+
+        return apiClient(originalRequest);
       } catch (err) {
-                processQueue(err, null);
-        
-                localStorage.removeItem('token');
+        processQueue(err, null);
+
+        localStorage.removeItem('token');
         localStorage.removeItem('refresh_token');
         window.location.href = '/login';
         showError('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.');
@@ -130,9 +130,9 @@ apiClient.interceptors.response.use(
         isRefreshing = false;
       }
     }
-    
-        if (error.response) {
-            switch (error.response.status) {
+
+    if (error.response) {
+      switch (error.response.status) {
         case 403:
           showError('Bạn không có quyền truy cập vào tài nguyên này.');
           break;
@@ -159,20 +159,20 @@ apiClient.interceptors.response.use(
 
 const api = {
   baseURL: API_BASE_URL,
-  
-    dashboard: {
-    getStats: () => 
+
+  dashboard: {
+    getStats: () =>
       apiClient.get('/user/stats'),
-    getRecentDocuments: (limit = 10) => 
+    getRecentDocuments: (limit = 10) =>
       apiClient.get('/user/recent-documents', { params: { limit } }),
   },
-  
-    auth: {
+
+  auth: {
     login: (username, password) => {
-            const formData = new URLSearchParams();
+      const formData = new URLSearchParams();
       formData.append('username', username);
       formData.append('password', password);
-      
+
       return apiClient.post('/auth/login', formData, {
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded'
@@ -185,53 +185,53 @@ const api = {
         email,
         password
       };
-      
+
       if (fullName) {
         data.full_name = fullName;
       }
-      
+
       console.log('Register data:', data);
-      
+
       return apiClient.post('/auth/register', data);
     },
-    refreshToken: (refresh_token) => 
+    refreshToken: (refresh_token) =>
       apiClient.post('/auth/refresh-token', { refresh_token }),
-    logout: () => 
+    logout: () =>
       apiClient.post('/auth/logout', { refresh_token: localStorage.getItem('refresh_token') }),
-    getProfile: () => 
+    getProfile: () =>
       apiClient.get('/auth/me'),
     updateProfile: (profileData) =>
       apiClient.put('/auth/profile', profileData),
   },
-  
-    pdf: {
-    getDocuments: (params) => 
+
+  pdf: {
+    getDocuments: (params) =>
       apiClient.get('/pdf/', { params }),
-    uploadDocument: (formData) => 
+    uploadDocument: (formData) =>
       apiClient.post('/pdf/upload', formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       }),
-    getDocument: (id) => 
+    getDocument: (id) =>
       apiClient.get(`/pdf/${id}`),
-    deleteDocument: (id) => 
+    deleteDocument: (id) =>
       apiClient.delete(`/pdf/${id}`),
-    encryptDocument: (formData) => 
+    encryptDocument: (formData) =>
       apiClient.post(`/pdf/encrypt`, formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       }),
-    decryptDocument: (formData) => 
+    decryptDocument: (formData) =>
       apiClient.post(`/pdf/decrypt`, formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       }),
-    convertToWord: (formData) => 
+    convertToWord: (formData) =>
       apiClient.post(`/pdf/convert/to-word`, formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       }),
-    convertToImages: (formData) => 
+    convertToImages: (formData) =>
       apiClient.post(`/pdf/convert/to-images`, formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       }),
-    mergeDocuments: (formData) => 
+    mergeDocuments: (formData) =>
       apiClient.post(`/pdf/merge`, formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       }),
@@ -264,32 +264,32 @@ const api = {
     },
     convertFileToWord: (fileOrFormData) => {
       let formData;
-      
+
       if (fileOrFormData instanceof FormData) {
         formData = fileOrFormData;
       } else {
         formData = new FormData();
         formData.append('file', fileOrFormData);
       }
-      
+
       return apiClient.post('/pdf/convert/to-word', formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
     },
   },
-  
-    word: {
-    getDocuments: (params) => 
+
+  word: {
+    getDocuments: (params) =>
       apiClient.get('/word/', { params }),
-    uploadDocument: (formData) => 
+    uploadDocument: (formData) =>
       apiClient.post('/word/upload', formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       }),
-    getDocument: (id) => 
+    getDocument: (id) =>
       apiClient.get(`/word/${id}`),
-    deleteDocument: (id) => 
+    deleteDocument: (id) =>
       apiClient.delete(`/word/${id}`),
-    convertToPdf: (id) => 
+    convertToPdf: (id) =>
       apiClient.post(`/word/convert/to-pdf`, { document_id: id }),
 
     downloadDocument: (id) => {
@@ -307,7 +307,7 @@ const api = {
     convertFileToPdf: (file) => {
       const formData = new FormData();
       formData.append('file', file);
-      
+
       return apiClient.post('/word/convert/to-pdf', formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
@@ -318,7 +318,7 @@ const api = {
       formData.append('watermark_text', watermarkText);
       formData.append('position', position);
       formData.append('opacity', opacity);
-      
+
       return apiClient.post('/word/watermark', formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
@@ -328,7 +328,7 @@ const api = {
       formData.append('template_id', templateId);
       formData.append('data', typeof data === 'string' ? data : JSON.stringify(data));
       formData.append('output_format', outputFormat);
-      
+
       return apiClient.post('/word/templates/apply', formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
@@ -344,7 +344,7 @@ const api = {
       formData.append('template_id', templateId);
       formData.append('data_file', dataFile);
       formData.append('output_format', outputFormat);
-      
+
       return apiClient.post('/word/batch', formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
@@ -368,27 +368,27 @@ const api = {
       const formData = new FormData();
       formData.append('data_file', dataFile);
       formData.append('output_format', outputFormat);
-      
+
       return apiClient.post('/word/templates/invitation', formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
     },
   },
-  
-    excel: {
-    getDocuments: (params) => 
+
+  excel: {
+    getDocuments: (params) =>
       apiClient.get('/excel/', { params }),
-    uploadDocument: (formData) => 
+    uploadDocument: (formData) =>
       apiClient.post('/excel/upload', formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       }),
-    getDocument: (id) => 
+    getDocument: (id) =>
       apiClient.get(`/excel/${id}`),
-    deleteDocument: (id) => 
+    deleteDocument: (id) =>
       apiClient.delete(`/excel/${id}`),
-    convertToPdf: (id) => 
+    convertToPdf: (id) =>
       apiClient.post(`/excel/convert/to-pdf`, { document_id: id }),
-    convertToWord: (id) => 
+    convertToWord: (id) =>
       apiClient.post(`/excel/convert/to-word`, { document_id: id }),
     downloadDocument: (id) => {
       return apiClient.get(`/excel/download/${id}`, {
@@ -405,7 +405,7 @@ const api = {
     convertFileToPdf: (file) => {
       const formData = new FormData();
       formData.append('file', file);
-      
+
       return apiClient.post('/excel/convert/to-pdf', formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
@@ -415,7 +415,7 @@ const api = {
       formData.append('template_id', templateId);
       formData.append('data', typeof data === 'string' ? data : JSON.stringify(data));
       formData.append('output_format', outputFormat);
-      
+
       return apiClient.post('/excel/templates/apply', formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
@@ -432,80 +432,80 @@ const api = {
         formData.append('files', file);
       });
       formData.append('output_filename', outputFilename);
-      
+
       return apiClient.post('/excel/merge', formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
     },
   },
-  
-    archives: {
-        getArchives: (params) => 
+
+  archives: {
+    getArchives: (params) =>
       apiClient.get('files/archives', { params }),
-    
-        uploadArchive: (formData) => 
+
+    uploadArchive: (formData) =>
       apiClient.post('/files/archives/upload', formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       }),
-    
-        compressFiles: (fileIds, outputFilename, archiveFormat = 'zip', password = null, compressionLevel = 6) => {
+
+    compressFiles: (fileIds, outputFilename, archiveFormat = 'zip', password = null, compressionLevel = 6) => {
       const formData = new FormData();
       formData.append('file_ids', Array.isArray(fileIds) ? fileIds.join(',') : fileIds);
       formData.append('output_filename', outputFilename);
       formData.append('compression_type', archiveFormat);
       formData.append('compression_level', compressionLevel.toString());
-      
+
       if (password) {
         formData.append('password', password);
       }
-      
+
       return apiClient.post('/files/compress', formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
     },
-    
-        decompressArchive: (archiveId, password = null, extractAll = true, filePaths = null) => {
+
+    decompressArchive: (archiveId, password = null, extractAll = true, filePaths = null) => {
       const formData = new FormData();
       formData.append('archive_id', archiveId);
       formData.append('extract_all', extractAll);
-      
+
       if (password) {
         formData.append('password', password);
       }
-      
+
       if (filePaths) {
         formData.append('file_paths', Array.isArray(filePaths) ? filePaths.join(',') : filePaths);
       }
-      
+
       return apiClient.post('/files/decompress', formData);
     },
-    
-        crackArchivePassword: (archiveId, maxLength = 6) => {
+
+    crackArchivePassword: (archiveId, maxLength = 6) => {
       const formData = new FormData();
       formData.append('archive_id', archiveId);
       formData.append('max_length', maxLength);
-      
+
       return apiClient.post('/files/crack', formData);
     },
-    
-        downloadArchive: (archiveId) => {
+
+    downloadArchive: (archiveId) => {
       return apiClient.get(`/files/archives/download/${archiveId}`, {
         responseType: 'blob'
       });
     },
-    
-        deleteArchive: (archiveId, permanent = false) =>
+
+    deleteArchive: (archiveId, permanent = false) =>
       apiClient.delete(`/files/archives/${archiveId}?permanent=${permanent}`),
-    
-        getCompressStatus: (taskId) =>
+
+    getCompressStatus: (taskId) =>
       apiClient.get(`/files/status/compress/${taskId}`),
-    
+
     getDecompressStatus: (taskId) =>
       apiClient.get(`/files/status/decompress/${taskId}`),
-    
+
     getCrackStatus: (taskId) =>
       apiClient.get(`/files/status/crack/${taskId}`),
-    
+
     downloadProcessedFile: (taskId) => {
       return apiClient.get(`/files/download/processed/${taskId}`, {
         responseType: 'blob'
