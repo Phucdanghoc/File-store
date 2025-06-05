@@ -23,9 +23,9 @@ const HomePage = () => {
       try {
         // Gọi từng API riêng lẻ
         const [pdfResponse, wordResponse, excelResponse] = await Promise.all([
-          api.pdf.getDocuments({ limit: 5, sort: 'created_at:desc' }),
-          api.word.getDocuments({ limit: 5, sort: 'created_at:desc' }),
-          api.excel.getDocuments({ limit: 5, sort: 'created_at:desc' }),
+          api.pdf.getDocuments({ limit:100, sort: 'created_at:desc' }),
+          api.word.getDocuments({ limit:100, sort: 'created_at:desc' }),
+          api.excel.getDocuments({ limit:100, sort: 'created_at:desc' }),
         ]);
 
         // Xử lý danh sách tài liệu
@@ -54,7 +54,7 @@ const HomePage = () => {
         // Kết hợp và sắp xếp tài liệu theo created_at
         const combinedDocuments = [...pdfDocs, ...wordDocs, ...excelDocs].sort(
           (a, b) => new Date(b.date) - new Date(a.date)
-        ).slice(0, 5); // Lấy tối đa 5 tài liệu
+        ).slice(0, 100); 
 
         setRecentDocuments(combinedDocuments);
 
@@ -63,7 +63,7 @@ const HomePage = () => {
           totalDocuments: pdfResponse.data?.total_count + wordResponse.data?.total_count + excelResponse.data?.total_count || 0,
           pdfCount: pdfResponse.data?.total_count || 0,
           wordCount: wordResponse.data?.total_count || 0,
-          excelCount: excelResponse.data?.total_count || 0,
+          excelCount: excelResponse.data?.total || 0,
         });
       } catch (error) {
         console.error('Lỗi khi tải dữ liệu dashboard:', error);
