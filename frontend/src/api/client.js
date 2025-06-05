@@ -9,6 +9,26 @@ export const setModalService = (service) => {
   modalService = service;
 };
 
+// Hàm cấu hình token xác thực
+export const setAuthToken = (token, refreshToken = null, options = {}) => {
+  if (token) {
+    localStorage.setItem('token', token);
+    apiClient.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+    if (refreshToken) {
+      localStorage.setItem('refresh_token', refreshToken);
+    }
+  } else {
+    localStorage.removeItem('token');
+    localStorage.removeItem('refresh_token');
+    delete apiClient.defaults.headers.common['Authorization'];
+  }
+
+  // Tùy chọn bổ sung (nếu cần)
+  if (options.tokenType && options.tokenType !== 'Bearer') {
+    apiClient.defaults.headers.common['Authorization'] = `${options.tokenType} ${token}`;
+  }
+};
+
 const getErrorMessage = (error) => {
   if (typeof error === 'string') return error;
   if (error && typeof error === 'object') {
@@ -65,7 +85,7 @@ const processQueue = (error, token = null) => {
 apiClient.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('token');
-    if (token) {
+    if (token && !config.headers.Authorization) {
       config.headers.Authorization = `Bearer ${token}`;
     }
     return config;
@@ -109,10 +129,7 @@ apiClient.interceptors.response.use(
 
         const { access_token, refresh_token } = response.data;
 
-        localStorage.setItem('token', access_token);
-        localStorage.setItem('refresh_token', refresh_token);
-
-        apiClient.defaults.headers.common['Authorization'] = 'Bearer ' + access_token;
+        setAuthToken(access_token, refresh_token); // Sử dụng setAuthToken để cập nhật token
         originalRequest.headers['Authorization'] = 'Bearer ' + access_token;
 
         processQueue(null, access_token);
@@ -161,8 +178,7 @@ const api = {
   baseURL: API_BASE_URL,
 
   dashboard: {
-    getStats: () =>
-      apiClient.get('/user/stats'),
+    getStats: () => apiClient.get('/user/stats'),
     getRecentDocuments: (limit = 10) =>
       apiClient.get('/user/recent-documents', { params: { limit } }),
   },
@@ -189,8 +205,6 @@ const api = {
       if (fullName) {
         data.full_name = fullName;
       }
-
-      console.log('Register data:', data);
 
       return apiClient.post('/auth/register', data);
     },
@@ -291,7 +305,6 @@ const api = {
       apiClient.delete(`/word/${id}`),
     convertToPdf: (id) =>
       apiClient.post(`/word/convert/to-pdf`, { document_id: id }),
-
     downloadDocument: (id) => {
       return apiClient.get(`/word/download/${id}`, {
         responseType: 'blob'
@@ -442,12 +455,10 @@ const api = {
   archives: {
     getArchives: (params) =>
       apiClient.get('files/archives', { params }),
-
     uploadArchive: (formData) =>
       apiClient.post('/files/archives/upload', formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       }),
-
     compressFiles: (fileIds, outputFilename, archiveFormat = 'zip', password = null, compressionLevel = 6) => {
       const formData = new FormData();
       formData.append('file_ids', Array.isArray(fileIds) ? fileIds.join(',') : fileIds);
@@ -463,7 +474,6 @@ const api = {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
     },
-
     decompressArchive: (archiveId, password = null, extractAll = true, filePaths = null) => {
       const formData = new FormData();
       formData.append('archive_id', archiveId);
@@ -479,7 +489,6 @@ const api = {
 
       return apiClient.post('/files/decompress', formData);
     },
-
     crackArchivePassword: (archiveId, maxLength = 6) => {
       const formData = new FormData();
       formData.append('archive_id', archiveId);
@@ -487,25 +496,19 @@ const api = {
 
       return apiClient.post('/files/crack', formData);
     },
-
     downloadArchive: (archiveId) => {
       return apiClient.get(`/files/archives/download/${archiveId}`, {
         responseType: 'blob'
       });
     },
-
     deleteArchive: (archiveId, permanent = false) =>
       apiClient.delete(`/files/archives/${archiveId}?permanent=${permanent}`),
-
     getCompressStatus: (taskId) =>
       apiClient.get(`/files/status/compress/${taskId}`),
-
     getDecompressStatus: (taskId) =>
       apiClient.get(`/files/status/decompress/${taskId}`),
-
     getCrackStatus: (taskId) =>
       apiClient.get(`/files/status/crack/${taskId}`),
-
     downloadProcessedFile: (taskId) => {
       return apiClient.get(`/files/download/processed/${taskId}`, {
         responseType: 'blob'
@@ -519,4 +522,4 @@ export const notifications = {
   showSuccess
 };
 
-export default api; 
+export default api;

@@ -12,61 +12,87 @@ const HomePage = () => {
     totalDocuments: 0,
     pdfCount: 0,
     wordCount: 0,
-    excelCount: 0
+    excelCount: 0,
   });
   const [loading, setLoading] = useState(true);
   const { user } = useAuth();
-  
+
   useEffect(() => {
     const fetchDashboardData = async () => {
       setLoading(true);
       try {
-          const [statsResponse, recentDocsResponse] = await Promise.all([
-          api.dashboard.getStats(),
-          api.dashboard.getRecentDocuments(5)        
+        // Gọi từng API riêng lẻ
+        const [pdfResponse, wordResponse, excelResponse] = await Promise.all([
+          api.pdf.getDocuments({ limit: 5, sort: 'created_at:desc' }),
+          api.word.getDocuments({ limit: 5, sort: 'created_at:desc' }),
+          api.excel.getDocuments({ limit: 5, sort: 'created_at:desc' }),
         ]);
-        if (statsResponse.data) {
-          setStats(statsResponse.data);
-        }
-          if (recentDocsResponse.data) {
-            if (recentDocsResponse.data.items) {
-              setRecentDocuments(recentDocsResponse.data.items);
-          } else if (Array.isArray(recentDocsResponse.data)) {
-            setRecentDocuments(recentDocsResponse.data);
-          } else {
-            setRecentDocuments([]);
-          }
-        }
+
+        // Xử lý danh sách tài liệu
+        const pdfDocs = pdfResponse.data?.items?.map(doc => ({
+          ...doc,
+          type: 'pdf',
+          name: doc.title || doc.original_filename,
+          size: doc.file_size,
+          date: doc.created_at,
+        })) || [];
+        const wordDocs = wordResponse.data?.items?.map(doc => ({
+          ...doc,
+          type: 'word',
+          name: doc.title || doc.original_filename,
+          size: doc.file_size,
+          date: doc.created_at,
+        })) || [];
+        const excelDocs = excelResponse.data?.items?.map(doc => ({
+          ...doc,
+          type: 'excel',
+          name: doc.title || doc.original_filename,
+          size: doc.file_size,
+          date: doc.created_at,
+        })) || [];
+
+        // Kết hợp và sắp xếp tài liệu theo created_at
+        const combinedDocuments = [...pdfDocs, ...wordDocs, ...excelDocs].sort(
+          (a, b) => new Date(b.date) - new Date(a.date)
+        ).slice(0, 5); // Lấy tối đa 5 tài liệu
+
+        setRecentDocuments(combinedDocuments);
+
+        // Cập nhật thống kê
+        setStats({
+          totalDocuments: pdfResponse.data?.total_count + wordResponse.data?.total_count + excelResponse.data?.total_count || 0,
+          pdfCount: pdfResponse.data?.total_count || 0,
+          wordCount: wordResponse.data?.total_count || 0,
+          excelCount: excelResponse.data?.total_count || 0,
+        });
       } catch (error) {
         console.error('Lỗi khi tải dữ liệu dashboard:', error);
         toast.error('Không thể tải dữ liệu dashboard');
-        
-                setRecentDocuments([]);
-        
+        setRecentDocuments([]);
         setStats({
           totalDocuments: 0,
           pdfCount: 0,
           wordCount: 0,
-          excelCount: 0
+          excelCount: 0,
         });
       } finally {
         setLoading(false);
       }
     };
-    
+
     fetchDashboardData();
   }, []);
-  
+
   const handleFileUpload = async (files) => {
     if (files.length === 0) return;
-    
+
     const formData = new FormData();
     formData.append('file', files[0]);
-    
+
     try {
       const fileName = files[0].name.toLowerCase();
       let response;
-      
+
       if (fileName.endsWith('.pdf')) {
         response = await api.pdf.uploadDocument(formData);
         toast.success('Tải lên tài liệu PDF thành công!');
@@ -80,20 +106,49 @@ const HomePage = () => {
         toast.error('Định dạng tệp không được hỗ trợ');
         return null;
       }
-      
-            const [statsResponse, recentDocsResponse] = await Promise.all([
-        api.dashboard.getStats(),
-        api.dashboard.getRecentDocuments(5)
+
+      // Làm mới danh sách tài liệu và thống kê
+      const [pdfResponse, wordResponse, excelResponse] = await Promise.all([
+        api.pdf.getDocuments({ limit: 5, sort: 'created_at:desc' }),
+        api.word.getDocuments({ limit: 5, sort: 'created_at:desc' }),
+        api.excel.getDocuments({ limit: 5, sort: 'created_at:desc' }),
       ]);
-      
-      if (statsResponse.data) {
-        setStats(statsResponse.data);
-      }
-      
-      if (recentDocsResponse.data) {
-        setRecentDocuments(recentDocsResponse.data);
-      }
-      
+
+      const pdfDocs = pdfResponse.data?.items?.map(doc => ({
+        ...doc,
+        type: 'pdf',
+        name: doc.title || doc.original_filename,
+        size: doc.file_size,
+        date: doc.created_at,
+      })) || [];
+      const wordDocs = wordResponse.data?.items?.map(doc => ({
+        ...doc,
+        type: 'word',
+        name: doc.title || doc.original_filename,
+        size: doc.file_size,
+        date: doc.created_at,
+      })) || [];
+      const excelDocs = excelResponse.data?.items?.map(doc => ({
+        ...doc,
+        type: 'excel',
+        name: doc.title || doc.original_filename,
+        size: doc.file_size,
+        date: doc.created_at,
+      })) || [];
+
+      const combinedDocuments = [...pdfDocs, ...wordDocs, ...excelDocs].sort(
+        (a, b) => new Date(b.date) - new Date(a.date)
+      ).slice(0, 5);
+
+      setRecentDocuments(combinedDocuments);
+
+      setStats({
+        totalDocuments: pdfResponse.data?.total_count + wordResponse.data?.total_count + excelResponse.data?.total_count || 0,
+        pdfCount: pdfResponse.data?.total_count || 0,
+        wordCount: wordResponse.data?.total_count || 0,
+        excelCount: excelResponse.data?.total_count || 0,
+      });
+
       return response.data;
     } catch (error) {
       console.error('Lỗi khi tải lên:', error);
@@ -101,44 +156,52 @@ const HomePage = () => {
       throw error;
     }
   };
-  
+
   const getIconForType = (type) => {
     switch (type) {
-      case 'pdf': return <FiFile className="text-red-500" />;
-      case 'word': return <FiFileText className="text-blue-500" />;
-      case 'excel': return <FiTable className="text-green-500" />;
-      default: return <FiFile />;
+      case 'pdf':
+        return <FiFile className="text-red-500" />;
+      case 'word':
+        return <FiFileText className="text-blue-500" />;
+      case 'excel':
+        return <FiTable className="text-green-500" />;
+      default:
+        return <FiFile />;
     }
   };
-  
+
   const formatFileSize = (sizeInBytes) => {
     if (!sizeInBytes || typeof sizeInBytes !== 'number') return '-';
-    
+
     if (sizeInBytes < 1024 * 1024) {
       return `${(sizeInBytes / 1024).toFixed(1)} KB`;
     } else {
       return `${(sizeInBytes / (1024 * 1024)).toFixed(1)} MB`;
     }
   };
-  
+
   const formatDate = (dateStr) => {
     if (!dateStr) return '-';
-    
+
     try {
       const date = new Date(dateStr);
-      return date.toLocaleDateString('vi-VN');
+      return date.toLocaleDateString('vi-VN', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+      });
     } catch (error) {
       return dateStr;
     }
   };
-  
+
   return (
     <div className="container mx-auto">
       <div className="mb-8">
         <h1 className="text-3xl font-bold mb-2">Xin chào, {user?.full_name || user?.username || 'Người dùng'}</h1>
         <p className="text-gray-600">Chào mừng đến với hệ thống xử lý tài liệu</p>
       </div>
-      
+
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
         <div className="col-span-1 md:col-span-2">
           <div className="card bg-gradient-accent text-white">
@@ -160,7 +223,7 @@ const HomePage = () => {
             </div>
           </div>
         </div>
-        
+
         <div className="card">
           <h2 className="text-xl font-semibold mb-4">Thống kê</h2>
           {loading ? (
@@ -194,11 +257,11 @@ const HomePage = () => {
           )}
         </div>
       </div>
-      
+
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="md:col-span-2 card">
           <h2 className="text-xl font-semibold mb-4">Tài liệu gần đây</h2>
-          
+
           {loading ? (
             <div className="flex justify-center items-center py-10">
               <div className="w-10 h-10 border-4 border-primary-500 border-t-transparent rounded-full animate-spin"></div>
@@ -228,19 +291,19 @@ const HomePage = () => {
                       <td className="px-4 py-3 text-sm text-gray-900">
                         <div className="flex items-center">
                           {getIconForType(doc.type)}
-                          <span className="ml-2">{doc.name || doc.filename || doc.title || doc.original_filename}</span>
+                          <span className="ml-2">{doc.name}</span>
                         </div>
                       </td>
                       <td className="px-4 py-3 text-sm text-gray-500 uppercase">
                         {doc.type}
                       </td>
                       <td className="px-4 py-3 text-sm text-gray-500">
-                        {formatFileSize(doc.size || doc.file_size)}
+                        {formatFileSize(doc.size)}
                       </td>
                       <td className="px-4 py-3 text-sm text-gray-500">
                         <div className="flex items-center">
                           <FiClock className="mr-1" />
-                          {formatDate(doc.date || doc.upload_date || doc.created_at)}
+                          {formatDate(doc.date)}
                         </div>
                       </td>
                     </tr>
@@ -254,9 +317,9 @@ const HomePage = () => {
             </div>
           )}
         </div>
-        
+
         <div className="card">
-          <FileUploader 
+          <FileUploader
             onFileUploaded={handleFileUpload}
             title="Tải lên nhanh"
             acceptedFileTypes={{
@@ -264,7 +327,7 @@ const HomePage = () => {
               'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'],
               'application/msword': ['.doc'],
               'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx'],
-              'application/vnd.ms-excel': ['.xls']
+              'application/vnd.ms-excel': ['.xls'],
             }}
           />
         </div>
@@ -273,4 +336,4 @@ const HomePage = () => {
   );
 };
 
-export default HomePage; 
+export default HomePage;
